@@ -4,6 +4,7 @@ data {
 	int<lower=1> L[s];	//trials per session
 	int<lower=-1> C[t];	//choice in each trial
 	int V[t,2];		//payoffs per trial
+	int R[t];		//recieved reward
 }
 
 parameters {
@@ -43,7 +44,7 @@ transformed parameters {
 			} else {
 				for (i in 1:2) {
 					Q[t,i] <- Q[t-1,i] + (C[t-1]==(i-1)) ? 
-						alpha*(V[t-1,C[t-1]+1] - Q[t-1,i]) : 0;
+						alpha*(R[t-1] - Q[t-1,i]) : 0;
 					K[t,i] <- K[t-1,i]*(1-tau) + 
 						(C[t-1]==(i-1)) ? 1 : 0;
 				}
