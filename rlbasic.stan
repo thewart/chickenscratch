@@ -22,28 +22,28 @@ transformed parameters {
 	{
 		int nxtsess;
 		int sess;
-		nxtsess <- 1;
-		sess <- 0;
+		nxtsess = 1;
+		sess = 0;
 
 		for (t in 1:T) {
 			
-			if ( t == nxtsess) {
+			if (t == nxtsess) {
 				for (i in 1:2) {
-					Q[t,i] <- 0;
-					K[t,i] <- 0;
+					Q[t,i] = 0;
+					K[t,i] = 0;
 				}
-				sess <- sess + 1;
-				nxtsess <- nxtsess + L[sess];
+				sess = sess + 1;
+				nxtsess = nxtsess + L[sess];
 			} else if (C[t-1]==-1) {
 				for (i in 1:2) {
-					Q[t,i] <- Q[t-1,i];
-					K[t,i] <- K[t-1,i]*(1-tau);
+					Q[t,i] = Q[t-1,i];
+					K[t,i] = K[t-1,i]*(1-tau);
 				}
 			} else {
 				for (i in 1:2) {
-					Q[t,i] <- Q[t-1,i] + (C[t-1]==(i-1)) ? 
+					Q[t,i] = Q[t-1,i] + (C[t-1]==(i-1)) ? 
 						alpha*(R[t-1] - Q[t-1,i]) : 0;
-					K[t,i] <- K[t-1,i]*(1-tau) + 
+					K[t,i] = K[t-1,i]*(1-tau) + 
 						(C[t-1]==(i-1)) ? 1 : 0;
 				}
 			}
