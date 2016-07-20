@@ -2,9 +2,9 @@ data {
 	int<lower=1> T;		//number of trials
 	int<lower=1> S;		//number of sessions
 	int<lower=1> L[s];	//trials per session
-	int<lower=-1> C[t];	//choice in each trial
-	int V[t,2];		//payoffs per trial
-	int R[t];		//recieved reward
+	int<lower=-1> C[T];	//choice in each trial
+	int V[T,2];		//payoffs per trial
+	int R[T];		//recieved reward
 }
 
 parameters {
@@ -17,9 +17,9 @@ parameters {
 }
 
 transformed parameters {
-	real Q[t,2];
-	real K[t,2];
-	real U[t];
+	real Q[T,2];
+	real K[T,2];
+	real U[T];
 	
 	{
 		int nxtsess;

@@ -2,8 +2,8 @@ data {
 	int<lower=1> T;		//number of trials
 	int<lower=1> S;		//number of sessions
 	int<lower=1> L[s];	//trials per session
-	int<lower=-1> C[t];	//choice in each trial
-	real R[t];		//reward recieved per trial
+	int<lower=-1> C[T];	//choice in each trial
+	real R[T];		//reward recieved per trial
 }
 
 parameters {
@@ -15,9 +15,9 @@ parameters {
 }
 
 transformed parameters {
-	real Q[t,2];
-	real K[t,2];
-	real V[t];
+	real Q[T,2];
+	real K[T,2];
+	real U[T];
 	
 	{
 		int nxtsess;
@@ -48,14 +48,14 @@ transformed parameters {
 				}
 			}
 			
-			V[t] = beta_r*(Q[t,1]-Q[t,2]) +
+			U[t] = beta_r*(Q[t,1]-Q[t,2]) +
 				beta_c*(K[t,1]-K[t,2]) + b;
 		}
 	}
 }
 
 model {
-	C ~ bernoulli_logit(V);
+	C ~ bernoulli_logit(U);
 	alpha ~ beta(2,2);
 	tau ~ beta(2,2);
 	beta_r ~ normal(2,10);
