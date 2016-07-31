@@ -3,7 +3,7 @@ data {
 	int<lower=1> S;		//number of sessions
 	int<lower=1> L[s];	//trials per session
 	int<lower=-1> C[T];	//choice in each trial
-	int V[T,2];		//payoffs per trial
+	int V[T,3];		//payoffs per trial
 	int R[T];		//recieved reward
 }
 
@@ -14,6 +14,7 @@ parameters {
 	real<lower=0> beta_k;		//choice history weight
 	real<lower=0> beta_v;		//payoff weight
 	real b;				//bias
+	real<lower=0,upper=1>w;		//weighting of tokens in front of wall
 }
 
 transformed parameters {
@@ -50,8 +51,8 @@ transformed parameters {
 				}
 			}
 			
-			U[t] = beta_v*(V[t,1]-V[t,2]) beta_q*(Q[t,1]-Q[t,2]) +
-				beta_k*(K[t,1]-K[t,2]) + b;
+			U[t] = beta_v*(V[t,1]-V[t,2]-w*V[t,3]) + 
+				beta_q*(Q[t,1]-Q[t,2]) + beta_k*(K[t,1]-K[t,2]) + b;
 		}
 	}
 }
@@ -63,4 +64,5 @@ model {
 	beta_r ~ normal(2,10);
 	beta_c ~ normal(2,10);
 	beta_v ~ normal(2,10);
+	//w ~ beta(1,1);
 }
