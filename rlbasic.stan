@@ -3,11 +3,13 @@ data {
 	int<lower=1> S;		//number of sessions
 	int<lower=1> L[s];	//trials per session
 	int<lower=-1> C[T];	//choice in each trial
-	real R[T];		//reward recieved per trial
+	int R[T];		//reward recieved per trial
+	int RF[T];		//fictitious reward	
 }
 
 parameters {
 	real<lower=0,upper=1> alpha;	//reward learning rate
+	real<lower=0,upper=1> alpfa;	//fictitious learning rate
 	real<lower=0,upper=1> tau;	//choice effect decay 
 	real<lower=0> beta_r;		//reward weight
 	real<lower=0> beta_c;		//choice history weight
@@ -42,7 +44,8 @@ transformed parameters {
 			} else {
 				for (i in 1:2) {
 					Q[t,i] = Q[t-1,i] + (C[t-1]==(i-1)) ? 
-						alpha*(R[t-1] - Q[t-1,i]) : 0;
+						alpha*(R[t-1] - Q[t-1,i]) : 
+						alpfa*(RF[t-1] - Q[t-1,i]);
 					K[t,i] = K[t-1,i]*(1-tau) + 
 						(C[t-1]==(i-1)) ? 1 : 0;
 				}
@@ -57,6 +60,7 @@ transformed parameters {
 model {
 	C ~ bernoulli_logit(U);
 	alpha ~ beta(2,2);
+	alpfa ~ beta(2,2);
 	tau ~ beta(2,2);
 	beta_r ~ normal(2,10);
 	beta_c ~ normal(2,10);
