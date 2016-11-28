@@ -12,11 +12,6 @@ data {
 	int<lower=0,upper=1> VI;    //gate value
 }
 
-transformed data{
-  int Cb[T];
-  for (t in 1:T) Cb[t] = C[t]-1;
-}
-
 parameters {
   real<lower=0,upper=1> p;      //probability of opponent swerving
 	real<lower=0,upper=1> alpha;	//reward learning rate
@@ -70,7 +65,9 @@ transformed parameters {
 }
 
 model {
-	Cb ~ bernoulli_logit(U);
+  for (t in 1:T) {
+    if (C[t]>0) (C[t]-1) ~ bernoulli_logit(U[t]);
+  }
 	p ~ beta(2,2);
 	alpha ~ beta(2,2);
 	tau ~ beta(2,2);
