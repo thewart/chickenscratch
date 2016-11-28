@@ -8,13 +8,12 @@ data {
 	real Vcop[T];               //cooperative swerve payoff
 	real R[T];		              //recieved reward
 	int<lower=0,upper=1> QI;    //gate RL influence on utility
-	int<lower=0,upper=1> KI;    //gate perseveration
+	int<lower=0,upper=1> KI;    //gate choice autocorrelation
 	int<lower=0,upper=1> VI;    //gate value
 }
 
 transformed data{
   int Cb[T];
-  
   for (t in 1:T) Cb[t] = C[t]-1;
 }
 
