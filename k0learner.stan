@@ -2,12 +2,12 @@ data {
   int<lower=1> T;             //number of trials
   int<lower=1> S;             //number of sessions
   int<lower=1> L[S];          //trials per session
-  int<lower=0,upper=2> C[T];  //choice in each trial -- 1 straight, 2 swerve, 0 no choice
-  int<lower=0,upper=2> D[T];  //opponent's choice
+  int<lower=0,upper=2> C1[T];  //choice in each trial -- 1 straight, 2 swerve, 0 no choice
+  int<lower=0,upper=2> C2[T];  //opponent's choice
   real Vsfe;                  //payoff in front of wall
   real Vstr[T];               //straight payoff
   real Vcop[T];               //cooperative swerve payoff
-  real R[T];                  //recieved reward
+  real R1[T];                  //recieved reward
   int<lower=0,upper=1> QI;    //gate RL influence on utility
   int<lower=0,upper=1> KI;    //gate choice autocorrelation
   int<lower=0,upper=1> VI;    //gate value
@@ -18,7 +18,7 @@ parameters {
   real<lower=0,upper=1> lambda;   //swerve learning rate
   real<lower=0,upper=1> alpha;    //reward learning rate
   real<lower=0,upper=1> tau;      //choice effect decay 
-  real Q0;                        //initial value
+  real<lower=0> Q0;                //initial value
   real<lower=0,upper=1> P0;       //initial prob of opponent swerving
   real beta_q;                    //RL value weight
   real beta_k;                    //choice history weight
@@ -50,7 +50,7 @@ transformed parameters {
         }
         P[t] = P0;
         
-      } else if (C[t-1]==0) { #aborted trial
+      } else if (C1[t-1]==0) { #aborted trial
         for (i in 1:2) {
           Q[t,i] = Q[t-1,i];
           K[t,i] = K[t-1,i]*(1-tau);
@@ -59,12 +59,12 @@ transformed parameters {
         
       } else {
         for (i in 1:2) { #update for successful trials
-          Q[t,i] = Q[t-1,i] + ((C[t-1]==i) ? 
-            alpha*(R[t-1] - Q[t-1,i]) : 0);
+          Q[t,i] = Q[t-1,i] + ((C1[t-1]==i) ? 
+            alpha*(R1[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
             ((C[t-1]==i) ? 1 : 0);
         }
-        P[t] = P[t-1] + lambda*( (D[t-1]-1) - P[t-1])*PI;
+        P[t] = P[t-1] + lambda*( (C2[t-1]-1) - P[t-1])*PI;
 
       }
 
@@ -77,7 +77,7 @@ transformed parameters {
 
 model {
   for (t in 1:T)
-    if (C[t]>0) (C[t]-1) ~ bernoulli_logit(U[t]);
+    if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
   P0 ~ beta(2,2);
   lambda ~ beta(2,2);
   alpha ~ beta(2,2);
