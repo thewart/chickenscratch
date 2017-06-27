@@ -19,7 +19,7 @@ parameters {
   real<lower=0,upper=1> alpha;	//reward learning rate
 	real<lower=0,upper=1> tau;	  //choice effect decay 
 	real Q0;                      //initial value
-	real<lower=0,upper=1> P0[S];  //initial prob of opponent swerving
+	real<lower=0,upper=1> P0;  //initial prob of opponent swerving
 	real beta_q;		              //RL value weight
 	real beta_k;		              //choice history weight
 	real beta_v;		              //Current trial payoff weight
@@ -42,13 +42,13 @@ transformed parameters {
 			real w;
 			
 			if (t == nxtsess) { #reset to initial values at new session
+				sess = sess + 1;
+				nxtsess = nxtsess + L[sess];
 				for (i in 1:2) {
 					Q[t,i] = Q0;
 					K[t,i] = 0;
-					P[t] = P0[sess];
+					P[t] = P0;
 				}
-				sess = sess + 1;
-				nxtsess = nxtsess + L[sess];
 				
 			} else if (C[t-1]==0) { #aborted trial
 				for (i in 1:2) {
