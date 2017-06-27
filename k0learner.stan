@@ -47,23 +47,25 @@ transformed parameters {
         for (i in 1:2) {
           Q[t,i] = Q0;
           K[t,i] = 0;
-          P[t] = P0;
         }
+        P[t] = P0;
         
       } else if (C[t-1]==0) { #aborted trial
         for (i in 1:2) {
           Q[t,i] = Q[t-1,i];
           K[t,i] = K[t-1,i]*(1-tau);
-          P[t] = P[t-1];
         }
+        P[t] = P[t-1];
+        
       } else {
         for (i in 1:2) { #update for successful trials
           Q[t,i] = Q[t-1,i] + ((C[t-1]==i) ? 
             alpha*(R[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
             ((C[t-1]==i) ? 1 : 0);
-          P[t] = P[t-1] + lambda*( (D[t-1]-1) - P[t-1])*PI;
         }
+        P[t] = P[t-1] + lambda*( (D[t-1]-1) - P[t-1])*PI;
+
       }
 
       #combined utility
