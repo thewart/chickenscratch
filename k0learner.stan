@@ -62,7 +62,7 @@ transformed parameters {
           Q[t,i] = Q[t-1,i] + ((C1[t-1]==i) ? 
             alpha*(R1[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
-            ((C[t-1]==i) ? 1 : 0);
+            ((C1[t-1]==i) ? 1 : 0);
         }
         P[t] = P[t-1] + lambda*( (C2[t-1]-1) - P[t-1])*PI;
 
@@ -94,6 +94,6 @@ generated quantities {
   
   loglik = 0;
   for (t in 1:T) {
-    if (C[t]>0) loglik = loglik + bernoulli_logit_lpmf(C[t]-1 | U[t]);
+    if (C1[t]>0) loglik = loglik + bernoulli_logit_lpmf(C1[t]-1 | U[t]);
   }
 }
