@@ -24,7 +24,7 @@ parameters {
   real beta_q[2];                    //RL value weight
   real beta_k[2];                    //choice history weight
   real beta_v[2];                    //Current trial payoff weight
-  real b[2];                         //bias towards swerve
+  real beta_0[2];                         //bias towards swerve
 }
 
 transformed parameters {
@@ -35,7 +35,7 @@ transformed parameters {
   {
     real Q[T,2];                  //RL estimated value
     real K[T,2];                  //perseveration component
-    real P[T,2];                  //swerve prob for incoherent (1) and coherent (2) trials 
+    real Popp[T,2];                  //swerve prob for incoherent (1) and coherent (2) trials 
     int nxtsess;
     int sess;
     nxtsess = 1;
@@ -44,61 +44,61 @@ transformed parameters {
     for (t in 1:T) {
       real w;
       
-	  if (t == nxtsess) { #reset to initial values at new session
+	  if (t == nxtsess) { //reset to initial values at new session
         sess = sess + 1;
         nxtsess = nxtsess + L[sess];
         for (i in 1:2) {
           Q[t,i] = Q0;
           K[t,i] = 0;
-          P[t,i] = P0[i];
+          Popp[t,i] = P0[i];
         }
 
-      } else if (C1[t-1]==0) { #aborted trial
+      } else if ( (C1[t-1]==0) || (C2[t-1]==0) ) { //t-1 was control trial, nothing learned
         for (i in 1:2) {
           Q[t,i] = Q[t-1,i];
           K[t,i] = K[t-1,i]*(1-tau);
-          P[t,i] = P[t-1,i];
+          Popp[t,i] = Popp[t-1,i];
         }
         
       } else {
-        for (i in 1:2) { #update for successful trials
+        for (i in 1:2) { //update for successful trials
           Q[t,i] = Q[t-1,i] + ((C1[t-1]==i) ? 
             alpha*(R1[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
             ((C1[t-1]==i) ? 1 : 0);
-          P[t,i] = P[t-1,i] + ((H[t-1]==i) ?
-          lambda*( (C2[t-1]-1) - P[t-1,i])*PI : 0);
+          Popp[t,i] = Popp[t-1,i] + ((H[t-1]==i) ?
+          lambda*( (C2[t-1]-1) - Popp[t-1,i])*PI : 0);
 
         }
 
       }
 
-      #combined utility
-      U[t] = beta_v[H[t]+1]*( (1-P[t,H[t]+1])*Vsfe + P[t,H[t]+1]*Vcop[t] - P[t,H[t]+1]*Vstr[t])*VI + 
-        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + beta_k[H[t]+1]*(K[t,2]-K[t,1])*KI + b[H[t]+1];
+      //combined utility
+      U[t] = beta_v[H[t]+1]*( (1-Popp[t,H[t]+1])*Vsfe + Popp[t,H[t]+1]*(Vcop[t]-Vstr[t]) )*VI + 
+        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + beta_k[H[t]+1]*(K[t,2]-K[t,1])*KI + beta_0[H[t]+1];
     }
   }
 }
 
 model {
   for (t in 1:T)
-    if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
-  P0 ~ beta(2,2);
-  lambda ~ beta(2,2);
-  alpha ~ beta(2,2);
-  tau ~ beta(2,2);
-  beta_q ~ normal(2,10);
-  beta_k ~ normal(2,10);
-  beta_v ~ normal(2,10);
-  b ~ normal(0,10);
-  Q0 ~ normal(1,5);
+    if ( (C1[t]>0) && (C2[t]>0) ) (C1[t]-1) ~ bernoulli_logit(U[t]);
+  // P0 ~ beta(2,2);
+  // lambda ~ beta(2,2);
+  // alpha ~ beta(2,2);
+  // tau ~ beta(2,2);
+  // beta_q ~ normal(2,10);
+  // beta_k ~ normal(2,10);
+  // beta_v ~ normal(2,10);
+  // b ~ normal(0,10);
+  // Q0 ~ normal(1,5);
 }
 
-generated quantities {
-  real loglik;
-  
-  loglik = 0;
-  for (t in 1:T) {
-    if (C1[t]>0) loglik = loglik + bernoulli_logit_lpmf(C1[t]-1 | U[t]);
-  }
-}
+// generated quantities {
+//   real loglik;
+//   
+//   loglik = 0;
+//   for (t in 1:T) {
+//     if (C1[t]>0) loglik = loglik + bernoulli_logit_lpmf(C1[t]-1 | U[t]);
+//   }
+// }

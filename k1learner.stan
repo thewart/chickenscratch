@@ -17,8 +17,8 @@ data {
 parameters {
   real<lower=0,upper=1> alpha;    //reward learning rate
   real<lower=0,upper=1> tau;      //choice effect decay 
-  real<lower=0> Qinit;               //initial value
-  real beta_0[2];                  //bias towards swerve
+  real<lower=0> Qinit;            //initial value
+  real beta_0[2];                 //bias towards swerve
   real beta_q[2];                 //RL value weight
   real beta_k[2];                 //choice history weight
   real beta_v[2];                 //Current trial payoff weight
@@ -27,10 +27,10 @@ parameters {
   real init_coh_opp;
   real init_v_opp;
   real init_vbycoh_opp;
-  real<lower=0,upper=1> eta_0_opp;
-  real<lower=0,upper=1> eta_coh_opp;
-  real<lower=0,upper=1> eta_v_opp;
-  real<lower=0,upper=1> eta_vbycoh_opp;
+  real<lower=0> eta_0_opp;
+  real<lower=0> eta_coh_opp;
+  real<lower=0> eta_v_opp;
+  real<lower=0> eta_vbycoh_opp;
 }
 
 transformed parameters {
@@ -52,6 +52,7 @@ transformed parameters {
 
     for (t in 1:T) {
 
+      //update learned values based on what happened on t-1
       if (t == nxtsess) { //reset to initial values at new session
         sess = sess + 1;
         nxtsess = nxtsess + L[sess];
@@ -64,7 +65,7 @@ transformed parameters {
           beta_vbycoh_opp[t] = init_vbycoh_opp;
         }
 
-      } else if (C1[t-1]==0) { //aborted trial
+      } else if ( (C1[t-1]==0) || (C2[t-1]==0) ) { //t-1 was control trial, nothing learned
         for (i in 1:2) {
           Q[t,i] = Q[t-1,i];
           K[t,i] = K[t-1,i]*(1-tau);
@@ -75,20 +76,21 @@ transformed parameters {
           beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1];
         }
 
-      } else {
-        for (i in 1:2) { //update for successful trials
+      } else { //update if t-1 was a 2-player trial
+        for (i in 1:2) { 
           Q[t,i] = Q[t-1,i] + ((C1[t-1]==i) ? 
             alpha*(R1[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
             ((C1[t-1]==i) ? 1 : 0);
         }
         
-        pe = C2[t-1]-1 - Popp;
+        pe = C2[t-1]-1 - Popp; //this is Popp[t-1]
         beta_0_opp[t] = beta_0_opp[t-1] + eta_0_opp * pe;
         beta_coh_opp[t] = beta_coh_opp[t-1] + eta_coh_opp * (H[t-1]-0.5) * pe;
         beta_v_opp[t] = beta_v_opp[t-1] + eta_v_opp * (Vcop[t-1]-Vstr[t-1]) * pe;
         beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta_vbycoh_opp * (Vcop[t-1]-Vstr[t-1]) * (H[t-1]-0.5) * pe;
       }
+      
       //combined utility
       Popp = inv_logit(beta_0_opp[t] + beta_coh_opp[t]*(H[t]-0.5) + 
         beta_v_opp[t]*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp[t]*(H[t]-0.5)*(Vcop[t]-Vstr[t]));
@@ -102,7 +104,7 @@ transformed parameters {
 
 model {
   for (t in 1:T)
-    if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
+    if ((C1[t]>0) && (C2[t]>0)) (C1[t]-1) ~ bernoulli_logit(U[t]);
   // P0 ~ beta(2,2);
   // alpha ~ beta(2,2);
   // tau ~ beta(2,2);
