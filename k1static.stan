@@ -34,6 +34,7 @@ transformed parameters {
   
   {
     real Popp;
+    real Vdiff;
     real Q[T,2];                  //RL estimated value
     real K[T,2];                  //perseveration component
     int nxtsess;
@@ -43,7 +44,7 @@ transformed parameters {
 
     for (t in 1:T) {
       
-      //update learned values based on what happened on t-1
+//update learned values based on what happened on t-1
       if (t == nxtsess) { //reset to initial values at new session
         sess = sess + 1;
         nxtsess = nxtsess + L[sess];
@@ -51,34 +52,43 @@ transformed parameters {
           Q[t,i] = Qinit;
           K[t,i] = 0;
         }
-
-      } else if ((C1[t-1]==0) || (C2[t-1]==0)) { //t-1 was control trial, nothing learned
+        
+      } else if (C1[t-1]==0) { //t-1 was a P2 only catch trial
         for (i in 1:2) {
           Q[t,i] = Q[t-1,i];
-          K[t,i] = K[t-1,i]*(1-tau);
+          K[t,i] = K[t-1,i];
         }
-
-      } else {
-        for (i in 1:2) { //update if t-1 was a 2-player trial
+      
+      } else { //if t-1 was a 2-player trial or a P1 only catch trial
+        
+        for (i in 1:2) { //update Q and K no matter what
           Q[t,i] = Q[t-1,i] + ((C1[t-1]==i) ? 
             alpha*(R1[t-1] - Q[t-1,i]) : 0);
           K[t,i] = K[t-1,i]*(1-tau) + 
             ((C1[t-1]==i) ? 1 : 0);
         }
-
       }
-      #combined utility
-      Popp = inv_logit(beta_0_opp + beta_coh_opp*(H[t]-0.5) + 
-        beta_v_opp*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp*(H[t]-0.5)*(Vcop[t]-Vstr[t]));
-      U[t] = beta_v[H[t]+1]*( (1-Popp)*Vsfe + Popp*(Vcop[t] - Vstr[t]) )*VI + 
-        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + beta_k[H[t]+1]*(K[t,2]-K[t,1])*KI + beta_0[H[t]+1];
+      
+      //combined utility
+      if (C2[t]!=0) {
+        Popp = inv_logit(beta_0_opp + beta_coh_opp*(H[t]-0.5) + 
+          beta_v_opp*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp*(H[t]-0.5)*(Vcop[t]-Vstr[t]));
+
+        Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]);
+      } else {
+        Vdiff = Vsfe - Vstr[t];
+      }
+      U[t] = beta_v[H[t]+1]*Vdiff*VI + 
+        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + 
+        beta_k[H[t]+1]*(K[t,2]-K[t,1])*KI + 
+        beta_0[H[t]+1];
     }
   }
 }
 
 model {
   for (t in 1:T)
-    if ((C1[t]>0) && (C2[t]>0)) (C1[t]-1) ~ bernoulli_logit(U[t]);
+    if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
   // P0 ~ beta(2,2);
   // alpha ~ beta(2,2);
   // tau ~ beta(2,2);
