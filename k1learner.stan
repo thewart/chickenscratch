@@ -88,10 +88,10 @@ transformed parameters {
         
         if (C2[t-1]!=0) { //if not P1 catch trial, update beliefs about opponent
           pe = C2[t-1]-1 - Popp; //this is Popp[t-1]
-          beta_0_opp[t] = beta_0_opp[t-1] + eta_0_opp * pe;
-          beta_coh_opp[t] = beta_coh_opp[t-1] + eta_coh_opp * (H[t-1]-0.5) * pe;
-          beta_v_opp[t] = beta_v_opp[t-1] + eta_v_opp * (Vcop[t-1]-Vstr[t-1]) * pe;
-          beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta_vbycoh_opp * (Vcop[t-1]-Vstr[t-1]) * (H[t-1]-0.5) * pe;
+          beta_0_opp[t] = beta_0_opp[t-1] + eta_0_opp * (H[t-1]==0) * pe;
+          beta_coh_opp[t] = beta_coh_opp[t-1] + eta_coh_opp * (H[t-1]) * pe;
+          beta_v_opp[t] = beta_v_opp[t-1] + eta_v_opp * (H[t-1]==0) * (Vcop[t-1]-Vstr[t-1]) * pe;
+          beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta_vbycoh_opp * (Vcop[t-1]-Vstr[t-1]) * (H[t-1]) * pe;
         } else { //otherwise no update
           beta_0_opp[t] = beta_0_opp[t-1];
           beta_coh_opp[t] = beta_coh_opp[t-1];
@@ -102,8 +102,8 @@ transformed parameters {
       
       //combined utility
       if (C2[t]!=0) {
-        Popp = inv_logit(beta_0_opp[t] + beta_coh_opp[t]*(H[t]-0.5) + 
-          beta_v_opp[t]*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp[t]*(H[t]-0.5)*(Vcop[t]-Vstr[t]));
+        Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]) + 
+          beta_v_opp[t]*(Vcop[t]-Vstr[t])*(H[t]==0) + beta_vbycoh_opp[t]*(H[t])*(Vcop[t]-Vstr[t]));
         Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]);
       } else {
         Vdiff = Vsfe - Vstr[t];
