@@ -10,7 +10,7 @@ data {
   real R1[T];                 //recieved reward
   int<lower=0,upper=1> H[T];  //0 low coherence 1 high coherence
   int<lower=0,upper=1> QI;    //gate RL influence on utility
-  int<lower=0,upper=1> KI;    //gate choice autocorrelation
+  int<lower=0,upper=1> CI;    //gate choice autocorrelation
   int<lower=0,upper=1> VI;    //gate value
 }
 
@@ -63,8 +63,8 @@ transformed parameters {
         }
         beta_0_opp[t] = init_0_opp;
         beta_coh_opp[t] = init_coh_opp;
-        beta_v_opp[t] = init_v_opp;
-        beta_vbycoh_opp[t] = init_vbycoh_opp;
+        beta_v_opp[t] = init_v_opp * KI;
+        beta_vbycoh_opp[t] = init_vbycoh_opp * KI;
 
       } else if (C1[t-1]==0) { //t-1 was a P2 only catch trial
         for (i in 1:2) {
@@ -88,10 +88,10 @@ transformed parameters {
         
         if (C2[t-1]!=0) { //if not P1 catch trial, update beliefs about opponent
           pe = C2[t-1]-1 - Popp; //this is Popp[t-1]
-          beta_0_opp[t] = beta_0_opp[t-1] + eta_0_opp * (H[t-1]==0) * pe;
-          beta_coh_opp[t] = beta_coh_opp[t-1] + eta_coh_opp * (H[t-1]) * pe;
-          beta_v_opp[t] = beta_v_opp[t-1] + eta_v_opp * (H[t-1]==0) * (Vcop[t-1]-Vstr[t-1]) * pe;
-          beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta_vbycoh_opp * (Vcop[t-1]-Vstr[t-1]) * (H[t-1]) * pe;
+          beta_0_opp[t] = beta_0_opp[t-1] + eta_0_opp * pe * LI;
+          beta_coh_opp[t] = beta_coh_opp[t-1] + eta_coh_opp * (H[t-1]-0.5) * pe * LI;
+          beta_v_opp[t] = beta_v_opp[t-1] + eta_v_opp * (Vcop[t-1]-Vstr[t-1]) * pe * LI * KI;
+          beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta_vbycoh_opp * (Vcop[t-1]-Vstr[t-1]) * (H[t-1]-0.5) * pe * LI * KI;
         } else { //otherwise no update
           beta_0_opp[t] = beta_0_opp[t-1];
           beta_coh_opp[t] = beta_coh_opp[t-1];
@@ -102,8 +102,8 @@ transformed parameters {
       
       //combined utility
       if (C2[t]!=0) {
-        Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]) + 
-          beta_v_opp[t]*(Vcop[t]-Vstr[t])*(H[t]==0) + beta_vbycoh_opp[t]*(H[t])*(Vcop[t]-Vstr[t]));
+        Popp = inv_logit(beta_0_opp[t] + beta_coh_opp[t]*(H[t]-0.5) + 
+          beta_v_opp[t]*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp[t]*(H[t]-0.5)*(Vcop[t]-Vstr[t]));
         Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]);
       } else {
         Vdiff = Vsfe - Vstr[t];
@@ -111,7 +111,7 @@ transformed parameters {
         
       U[t] = beta_v[H[t]+1]*Vdiff*VI + 
         beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + 
-        beta_k[H[t]+1]*(K[t,2]-K[t,1])*KI + 
+        beta_k[H[t]+1]*(K[t,2]-K[t,1])*CI + 
         beta_0[H[t]+1];
       
     }
