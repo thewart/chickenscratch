@@ -15,6 +15,7 @@ data {
   int<lower=0,upper=1> GI;    //gate generalization across hi and low coherence trials -- eta off-diagonal
   int<lower=0,upper=1> LI;    //gate learning -- eta
   int<lower=0,upper=1> KI;    //gate "ToM" -- init_v_opp, init_vbycoh_opp, and the associated betas
+  int<lower=0,upper=1> OI;    //gate outcome preference -- sum of coop and crash bonuses
 }
 
 parameters {
@@ -22,15 +23,17 @@ parameters {
   real<lower=0,upper=1> tau;      //choice effect decay 
   real<lower=0> Qinit;            //initial value
   real beta_0[2];                 //bias towards swerve
-  real beta_q[2];                 //RL value weight
+  real<lower=0> beta_q[2];                 //RL value weight
   real beta_k[2];                 //choice history weight
-  real beta_v[2];                 //Current trial payoff weight
+  real<lower=0> beta_v[2];                 //Current trial payoff weight
   
   real init_0_opp;
   real init_coh_opp;
   real init_v_opp;
   real init_vbycoh_opp;
   real<lower=0> eta[2,2];
+  
+  real Vo;                         //coop bonus+crash penalty
   // real<lower=0> eta_0_opp;
   // real<lower=0> eta_coh_opp;
   // real<lower=0> eta_v_opp;
@@ -115,7 +118,7 @@ transformed parameters {
       if (C2[t]!=0) {
         Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]==1) + 
           beta_v_opp[t]*(H[t]==0)*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp[t]*(H[t]==1)*(Vcop[t]-Vstr[t]));
-        Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]);
+        Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
       } else {
         Vdiff = Vsfe - Vstr[t];
       }
