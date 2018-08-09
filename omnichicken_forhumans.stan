@@ -29,7 +29,7 @@ parameters {
   real beta_k[2];                 //choice history weight
   real<lower=0> beta_v[2];        //Current trial payoff weight
   
-  real beta_s_swv[2];             //Social utility for rewards from swerving
+  real beta_s_cop[2];             //Social utility for rewards from swerving
   real beta_s_str[2];             //Social utility for rewards from going straight
   
   real init_0_opp;
@@ -124,16 +124,16 @@ transformed parameters {
         Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]==1) + 
           beta_v_opp[t]*(H[t]==0)*(Vcop_opp[t]-Vstr_opp[t]) + beta_vbycoh_opp[t]*(H[t]==1)*(Vcop_opp[t]-Vstr_opp[t]));
         EVdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
-        EVswv_opp = Popp*Vcop_opp[t];
+        EVcop_opp = Popp*Vcop_opp[t];
         EVstr_opp = (1-Popp)*Vstr_opp[t]; 
       } else {
         Vdiff = Vsfe - Vstr[t];
-        EVswv_opp = 0;
+        EVcop_opp = 0;
         EVstr_opp = 0;
       }
         
       U[t] = beta_v[H[t]+1]*EVdiff*VI + 
-        beta_s_swv[H[t]+1]*EVswv_opp + beta_s_str[H[t]+1]*EVstr_opp;
+        beta_s_swv[H[t]+1]*EVcop_opp + beta_s_str[H[t]+1]*EVstr_opp;
         beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + 
         beta_k[H[t]+1]*(K[t,2]-K[t,1])*CI + 
         beta_0[H[t]+1];
