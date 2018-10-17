@@ -18,25 +18,24 @@ data {
   int<lower=0,upper=1> LI;    //gate learning -- eta
   int<lower=0,upper=1> KI;    //gate "ToM" -- init_v_opp, init_vbycoh_opp, and the associated betas
   int<lower=0,upper=1> OI;    //gate outcome preference -- sum of coop and crash bonuses
+  int<lower=0,upper=1> SI;    //gate social utility
 }
 
 parameters {
   real<lower=0,upper=1> alpha;    //reward learning rate
   real<lower=0,upper=1> tau;      //choice effect decay 
-  real<lower=0> Qinit;            //initial value
-  real beta_0[2];                 //bias towards swerve
-  real<lower=0> beta_q[2];        //RL value weight
-  real beta_k[2];                 //choice history weight
-  real<lower=0> beta_v[2];        //Current trial payoff weight
-  
-  real beta_s_cop[2];             //Social utility for rewards from swerving
-  real beta_s_str[2];             //Social utility for rewards from going straight
+  // real<lower=0> Qinit;            //initial value
+  real beta_0;                 //bias towards swerve
+  real<lower=0> beta_q;        //RL value weight
+  real beta_k;                 //choice history weight
+  real<lower=0> beta_v;        //Current trial payoff weight
+  real beta_soc;             //Social utility for rewards from swerving
   
   real init_0_opp;
   real init_coh_opp;
   real init_v_opp;
   real init_vbycoh_opp;
-  real<lower=0> eta[2,2];
+  real<lower=0> eta[2];
   
   real Vo;                         //coop bonus+crash penalty
   // real<lower=0> eta_0_opp;
@@ -57,11 +56,14 @@ transformed parameters {
   {
     real Popp;
     real Vdiff;
+    real Vdiff_soc;
     int nxtsess;
     int sess;
     real pe;
+    real Qinit;
     nxtsess = 1;
     sess = 0;
+    Qinit = 0;
 
     for (t in 1:T) {
 
@@ -101,15 +103,15 @@ transformed parameters {
         if (C2[t-1]!=0) { //if not P1 catch trial, update beliefs about opponent
           pe = C2[t-1]-1 - Popp; //this is Popp[t-1]
           if (H[t-1]==0) {
-            beta_0_opp[t] = beta_0_opp[t-1] + eta[1,1] * pe * LI;
-            beta_coh_opp[t] = beta_coh_opp[t-1] + eta[1,2] * pe * GI * LI;
-            beta_v_opp[t] = beta_v_opp[t-1] + eta[1,1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
-            beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta[1,2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
+            beta_0_opp[t] = beta_0_opp[t-1] + eta[1] * pe * LI;
+            beta_coh_opp[t] = beta_coh_opp[t-1] + eta[2] * pe * GI * LI;
+            beta_v_opp[t] = beta_v_opp[t-1] + eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
+            beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
           } else {
-            beta_0_opp[t] = beta_0_opp[t-1] + eta[2,1] * pe * GI * LI;
-            beta_coh_opp[t] = beta_coh_opp[t-1] + eta[2,2] * pe * LI;
-            beta_v_opp[t] = beta_v_opp[t-1] + eta[2,1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
-            beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta[2,2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
+            beta_0_opp[t] = beta_0_opp[t-1] + eta[2] * pe * GI * LI;
+            beta_coh_opp[t] = beta_coh_opp[t-1] + eta[1] * pe * LI;
+            beta_v_opp[t] = beta_v_opp[t-1] + eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
+            beta_vbycoh_opp[t] = beta_vbycoh_opp[t-1] + eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
           }
         } else { //otherwise no update
           beta_0_opp[t] = beta_0_opp[t-1];
@@ -123,20 +125,18 @@ transformed parameters {
       if (C2[t]!=0) {
         Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]==1) + 
           beta_v_opp[t]*(H[t]==0)*(Vcop_opp[t]-Vstr_opp[t]) + beta_vbycoh_opp[t]*(H[t]==1)*(Vcop_opp[t]-Vstr_opp[t]));
-        EVdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
-        EVcop_opp = Popp*Vcop_opp[t];
-        EVstr_opp = (1-Popp)*Vstr_opp[t]; 
+        Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
+        Vdiff_soc = Popp*Vcop_opp[t] + (1-Popp)*Vstr_opp[t] - Popp*Vsfe;
       } else {
         Vdiff = Vsfe - Vstr[t];
-        EVcop_opp = 0;
-        EVstr_opp = 0;
+        Vdiff_soc = 0;
       }
         
-      U[t] = beta_v[H[t]+1]*EVdiff*VI + 
-        beta_s_swv[H[t]+1]*EVcop_opp + beta_s_str[H[t]+1]*EVstr_opp;
-        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + 
-        beta_k[H[t]+1]*(K[t,2]-K[t,1])*CI + 
-        beta_0[H[t]+1];
+      U[t] = beta_v*Vdiff*VI + 
+        beta_soc*Vdiff_soc*SI +
+        beta_q*(Q[t,2]-Q[t,1])*QI + 
+        beta_k*(K[t,2]-K[t,1])*CI + 
+        beta_0;
     }
   }
 }
@@ -144,16 +144,6 @@ transformed parameters {
 model {
   for (t in 1:T)
     if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
-
-  // P0 ~ beta(2,2);
-  // alpha ~ beta(2,2);
-  // tau ~ beta(2,2);
-  // beta_q ~ normal(2,10);
-  // beta_k ~ normal(2,10);
-  // beta_v ~ normal(2,10);
-  // beta_v_opp ~ normal(2,10);
-  // b ~ normal(0,10);
-  // Q0 ~ normal(1,5);
 }
 
 // generated quantities {
