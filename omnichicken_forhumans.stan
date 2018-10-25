@@ -37,83 +37,79 @@ parameters {
   real Vo;                         //coop bonus+crash penalty
 }
 
-transformed parameters {
-  real U[T];                    //utility!
+model {
+  real U;                    //utility!
+  real Q[2];                  //RL estimated value
+  real K[2];                  //perseveration component
+  real beta_0_opp;             //opponent's swerve bias
+  real beta_coh_opp;
+  real beta_v_opp;             //opponent's value influence
+  real beta_vbycoh_opp;
+  real Popp;
+  real Vdiff;
+  real Vdiff_soc;
+  real pe;
+  real rpe;
+  real kpe;
 
-  {
-    real Q[2];                  //RL estimated value
-    real K[2];                  //perseveration component
-    real beta_0_opp;             //opponent's swerve bias
-    real beta_coh_opp;
-    real beta_v_opp;             //opponent's value influence
-    real beta_vbycoh_opp;
-    real Popp;
-    real Vdiff;
-    real Vdiff_soc;
-    real pe;
-    real rpe;
-    real kpe;
+  for (t in 1:T) {
 
-    for (t in 1:T) {
-
-      //update learned values based on what happened on t-1
-      if (t == 1) { //reset to initial values at new session
-        for (i in 1:2) {
-          Q[i] = 0;
-          K[i] = 0;
-        }
-        beta_0_opp = init_0_opp;
-        beta_coh_opp = init_coh_opp;
-        beta_v_opp = init_v_opp * KI;
-        beta_vbycoh_opp = init_vbycoh_opp * KI;
-
-      } else if (C1[t-1]!=0) { //if t-1 was a 2-player trial or a P1 only catch trial
-        
-        rpe = R1[t-1] - Q[C1[t-1]];
-        kpe = 1-K[C1[t-1]];
-        for (i in 1:2) { //update Q and K no matter what
-          Q[i] += (C1[t-1]==i) ? alpha*rpe : 0;
-          K[i] += (C1[t-1]==i) ? tau*kpe : 0);
-        }
-        
-        if (C2[t-1]!=0) { //if not P1 catch trial, update beliefs about opponent
-          pe = C2[t-1]-1 - Popp; //this is Popp[t-1]
-          if (H[t-1]==0) {
-            beta_0_opp += eta[1] * pe * LI;
-            beta_coh_opp += eta[2] * pe * GI * LI;
-            beta_v_opp += eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
-            beta_vbycoh_opp += eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
-          } else {
-            beta_0_opp += eta[2] * pe * GI * LI;
-            beta_coh_opp += eta[1] * pe * LI;
-            beta_v_opp += eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
-            beta_vbycoh_opp += eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
-          }
-        } //else if (C2[t-1]==0) { } //otherwise no update
-      } //else if (C1[t-1]==0) { } //t-1 was a P2 only catch trial, no updates
+    //update learned values based on what happened on t-1
+    if (t == 1) { //reset to initial values at new session
       
-      //combined utility
-      if (C2[t]!=0) {
-        Popp = inv_logit(beta_0_opp*(H[t]==0) + beta_coh_opp*(H[t]==1) + 
-          beta_v_opp*(H[t]==0)*(Vcop_opp[t]-Vstr_opp[t]) + 
-          beta_vbycoh_opp*(H[t]==1)*(Vcop_opp[t]-Vstr_opp[t]));
-        Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
-        Vdiff_soc = Popp*Vcop_opp[t] + (1-Popp)*Vstr_opp[t] - Popp*Vsfe;
-      } else {
-        Vdiff = Vsfe - Vstr[t];
-        Vdiff_soc = 0;
+      for (i in 1:2) {
+        Q[i] = 0;
+        K[i] = 0;
+      }
+      beta_0_opp = init_0_opp;
+      beta_coh_opp = init_coh_opp;
+      beta_v_opp = init_v_opp * KI;
+      beta_vbycoh_opp = init_vbycoh_opp * KI;
+      
+    } else if (C1[t-1]!=0) { //if t-1 was a 2-player trial or a P1 only catch trial
+      
+      rpe = R1[t-1] - Q[C1[t-1]]; //update Q and K no matter what
+      kpe = 1-K[C1[t-1]];
+      for (i in 1:2) { 
+        Q[i] += (C1[t-1]==i) ? alpha*rpe : 0;
+        K[i] += (C1[t-1]==i) ? tau*kpe : 0;
       }
         
-      U[t] = beta_v*Vdiff*VI + 
+      if (C2[t-1]!=0) { //if not P1 catch trial, update beliefs about opponent
+        pe = C2[t-1]-1 - Popp;
+        if (H[t-1]==0) {
+          beta_0_opp += eta[1] * pe * LI;
+          beta_coh_opp += eta[2] * pe * GI * LI;
+          beta_v_opp += eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
+          beta_vbycoh_opp += eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
+        } else {
+          beta_0_opp += eta[2] * pe * GI * LI;
+          beta_coh_opp += eta[1] * pe * LI;
+          beta_v_opp += eta[2] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * GI * LI * KI;
+          beta_vbycoh_opp += eta[1] * (Vcop_opp[t-1]-Vstr_opp[t-1]) * pe * LI * KI;
+        }
+      } //else if (C2[t-1]==0) { } //otherwise no update
+    } //else if (C1[t-1]==0) { } //t-1 was a P2 only catch trial, no updates
+      
+    //combined utility
+    if (C2[t]!=0) {
+      Popp = inv_logit(beta_0_opp*(H[t]==0) + beta_coh_opp*(H[t]==1) + 
+        beta_v_opp*(H[t]==0)*(Vcop_opp[t]-Vstr_opp[t]) + 
+        beta_vbycoh_opp*(H[t]==1)*(Vcop_opp[t]-Vstr_opp[t]));
+      Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
+      Vdiff_soc = Popp*Vcop_opp[t] + (1-Popp)*Vstr_opp[t] - Popp*Vsfe;
+    } else {
+      Vdiff = Vsfe - Vstr[t];
+      Vdiff_soc = 0;
+    }
+      
+    if (C1[t]>0) {  
+      U = beta_v*Vdiff*VI + 
         beta_soc*Vdiff_soc*SI +
         beta_q*(Q[2]-Q[1])*QI + 
         beta_k*(K[2]-K[1])*CI + 
         beta_0;
+      (C1[t]-1) ~ bernoulli_logit(U);
     }
   }
-}
-
-model {
-  for (t in 1:T)
-    if (C1[t]>0) (C1[t]-1) ~ bernoulli_logit(U[t]);
 }
