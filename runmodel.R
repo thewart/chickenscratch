@@ -8,14 +8,20 @@ standat$S <- length(standat$L)
 standat <- c(standat,list(QI=1,CI=1,KI=1,VI=1,GI=1,LI=1,OI=1))
 
 chmd <- stan_model("~/code/chickenscratch/omnichicken.stan")
+fit <- optimizing(chmd,standat,verbose=T,as_vector=F,refresh=100)
 
-stanobj <- sampling(chmd,standat,chains=0)
 
-log_prob()
 
+##### compare to Rani's fits
 tbl <- fread("~/Downloads/Rani_tbl.csv")
-tbli <- tbl[1,-1] %>% as.vector()
-cpar <- list(alpha=tbli[1],tau=tbli[2],Qinit=tbli[3],beta_0=tbli[4:5],
-             beta_q=tbli[6:7],beta_k=tbli[8:9],beta_v=tbli[10:11],
-             init_0_opp=tbli[12],init_coh_opp=tbli[13],init_v_opp=tbli[14],init_vbycoh_opp[15],
-             eta=matrix(tbli[15:18]),Vo=tbli[20])
+tbli <- tbl[1,-1] %>% unlist()
+
+eval_loglik <- function(model,parvec) {
+  cpar <- list(alpha=parvec[1],tau=parvec[2],Qinit=parvec[3],beta_0=parvec[4:5],
+               beta_q=parvec[6:7],beta_k=parvec[8:9],beta_v=parvec[10:11],
+               init_0_opp=parvec[12],init_coh_opp=parvec[13],init_v_opp=parvec[14],
+               init_vbycoh_opp=parvec[15],eta=matrix(parvec[15:18],2),Vo=parvec[20])
+  stanobj <- sampling(model,standat,chains=0)
+  
+  return(log_prob(stanobj,unconstrain_pars(stanobj,cpar)))
+}
