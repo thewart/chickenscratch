@@ -21,11 +21,11 @@ data {
 parameters {
   real<lower=0,upper=1> alpha;    //reward learning rate
   real<lower=0,upper=1> tau;      //choice effect decay 
-  real<lower=0> Qinit;            //initial value
-  real beta_0[2];                 //bias towards swerve
-  real<lower=0> beta_q[2];                 //RL value weight
-  real beta_k[2];                 //choice history weight
-  real<lower=0> beta_v[2];                 //Current trial payoff weight
+  real<lower=0,upper=3.3> Qinit;  //initial value
+  real beta_0[3];                 //bias towards swerve
+  real<lower=0> beta_q[3];        //RL value weight
+  real beta_k[3];                 //choice history weight
+  real<lower=0> beta_v[3];                 //Current trial payoff weight
   
   real init_0_opp;
   real init_coh_opp;
@@ -55,6 +55,7 @@ transformed parameters {
     int nxtsess;
     int sess;
     real pe;
+    int tt;
     nxtsess = 1;
     sess = 0;
 
@@ -119,14 +120,16 @@ transformed parameters {
         Popp = inv_logit(beta_0_opp[t]*(H[t]==0) + beta_coh_opp[t]*(H[t]==1) + 
           beta_v_opp[t]*(H[t]==0)*(Vcop[t]-Vstr[t]) + beta_vbycoh_opp[t]*(H[t]==1)*(Vcop[t]-Vstr[t]));
         Vdiff = (1-Popp)*Vsfe + Popp*(Vcop[t]-Vstr[t]) + Popp*Vo*OI;
+        tt = H[t]+1;
       } else {
         Vdiff = Vsfe - Vstr[t];
+        tt = 3;
       }
         
-      U[t] = beta_v[H[t]+1]*Vdiff*VI + 
-        beta_q[H[t]+1]*(Q[t,2]-Q[t,1])*QI + 
-        beta_k[H[t]+1]*(K[t,2]-K[t,1])*CI + 
-        beta_0[H[t]+1];
+      U[t] = beta_v[tt]*Vdiff*VI + 
+        beta_q[tt]*(Q[t,2]-Q[t,1])*QI + 
+        beta_k[tt]*(K[t,2]-K[t,1])*CI + 
+        beta_0[tt];
     }
   }
 }

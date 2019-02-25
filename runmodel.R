@@ -24,5 +24,6 @@ eval_loglik_uncvector <- function(model,standat,parvec) {
                init_vbycoh_opp=parvec[15],eta=matrix(parvec[16:19],2),Vo=parvec[20])
   stanobj <- sampling(model,standat,chains=0)
   
-  return(log_prob(stanobj,unconstrain_pars(stanobj,cpar)))
+  return(log_prob(stanobj,unconstrain_pars(stanobj,cpar),adjust_transform=F))
 }
+
